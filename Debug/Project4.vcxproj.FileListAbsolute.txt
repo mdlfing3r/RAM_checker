@@ -1,0 +1,2 @@
+C:\Users\Alexander\source\repos\Project4\Debug\Project4.exe
+C:\Users\Alexander\source\repos\RAM_checker\Debug\RAM_checker.exe
