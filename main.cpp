@@ -1,84 +1,43 @@
-/*
-1645РУ1АУ - аналог cy7c1009b
-Логика работы:
-У микросхемы есть 3 пина управления:
-	- NWE(Not Write Enable) - разрешение записи, активный уровень LOW
-	- NCE(Not Chip Enable) - включение чипа т.е. перевод чипа памяти из режима хранения, в режим работы с памятью, активный уровень LOW
-	- NOE(Not Output Enable) - разрешение вывода данных с микросхемы, активный уровень LOW
-
-	Таблица режимов работы:
-
-	|NCE|NWE|NOE|     Mode     |      D0-D7     |
-	| H | X | X | Data storage | High Impedance |
-	| L | H | L | Reading data |   Output data  |
-	| L | H | H |   No output  | High Impedance |
-	| L | L | H |  Write data  |   Input data   |
-	| L | L | L |  Write data  |   Input data   |
-
-	Т.е. для управления микросхемой нужны 3 пина контроллера
-
-	Затем данные на восьми контактах ввода/вывода (от I/O0 до I/O7)
-	записывается в место, указанное на контактах адреса (A0 - А16).
-
-
-
-
-
-
-
-*/
-#include <iostream>
 #include "tester_contro.h"
 
 int main() {
-	int current_bit;
-	int current_bit_state;
-	int* current_bit_pntr = &current_bit;
+	int error_counter = 0; // счетчик ошибок чтения
 
-	int current_dir_bit_state = 0;
-
-	power_on(*power_state_pntr);
-	
-	for (int i = 0; i < 3; i++) {
-		getchar();
-
-		system("CLS");
-		std::cout << "enter the direction of " << i << " bit" << std::endl;
-		std::cin >> current_dir_bit_state;
-		set_pin_dir(current_dir_bit_state, i, *bit_direction_pntr);
-
-		std::cout << std::endl << "enter the " << i << " bit state" << std::endl;
-		std::cin >> current_bit_state;
-		write_pin(current_bit_state, i);
-
-		getchar();
-
+	power_on();
+	set_pin_dir(1, 0);
+	for (int row_b = 0; row_b < 1024; row_b++){
+		for (int column_b = 0; column_b < 128; column_b++){
+			set_adress(row_b, column_b);
+			int temp_bit_mask = bit_mask;
+			column_b % 2 == 0 ? bit_state_w = temp_bit_mask : bit_state_w = (temp_bit_mask << 1); // шахматное смещение, теперь в bit_state_w находится битовая маска
+			for (int bit_num = 0; bit_num < 8; bit_num++)
+			{	
+				write_pin(getbit(bit_state_w, bit_num), bit_num);
+				for (int delay_time = 0; delay_time < 300 * 1u; delay_time++);//тут должна быть пауза, не менее 55 нс (время цикла записи информации)
+																			  //максимальное значение для delay_time выбирается эмпирически для определенного МК, здесь оно равно 300 
+				
+			}	
+		}
 	}
-	getchar();
 
-	std::cout << " Press any key to start a error finding process " << std::endl;
-	
-	for (int i = 0; i < 3; i++) {
-		read_pin(i);
+	for (int delay_time = 0; delay_time < 500 * 1u; delay_time++);//тут должна быть пауза
+																  //максимальное значение для delay_time выбирается эмпирически для определенного МК, здесь оно равно 500 
+	//считываем данные															
+	set_pin_dir(0, 0);
+	for (int row_b = 0; row_b < 1024; row_b++) {
+		for (int column_b = 0; column_b < 128; column_b++) {
+			set_adress(row_b, column_b);
+			int temp_bit_mask = bit_mask;
+			column_b % 2 == 0 ? bit_state_w = temp_bit_mask : bit_state_w = (temp_bit_mask << 1); // шахматное смещение, теперь в bit_state_w находится битовая маска
+			for (int bit_num = 0; bit_num < 8; bit_num++)
+			{
+				(read_pin(bit_num) != getbit(bit_state_w, bit_num)) ? error_counter++ : 0;
+				for (int delay_time = 0; delay_time < 300 * 1u; delay_time++);//тут должна быть пауза, не менее 55 нс (время цикла чтения информации)
+																			  //максимальное значение для delay_time выбирается эмпирически для определенного МК, здесь оно равно 300 
+			}
+		}
 	}
-		//read_pin(*current_bit_pntr);
-	//	current_bit_state = i % 2;
-		//(*current_bit_pntr = (*current_bit_pntr) +1);
-		//std::cout << std::endl;
-	//}
+	power_off();
 
-	//std::cout << " Total bit state is " << std::bitset<8>(bit_state);
-
-
-	getchar();
-	getchar();
-
-	power_off(*power_state_pntr);
-
-
-
-	getchar();
-
-	getchar();
 	return 0;
 }
